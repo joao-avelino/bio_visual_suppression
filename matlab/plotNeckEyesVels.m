@@ -30,19 +30,23 @@ for i=1:lastMsg
     secs = (msgs{i,1}.Header.Stamp.Sec - initial_time.Sec);
     nsecs = (double(msgs{i,1}.Header.Stamp.Nsec)*10^-9 - double(initial_time.Nsec)*10^-9);
     times(i) = double(secs)+double(nsecs);
-    neck_pan_velocity(i) = msgs{i,1}.Velocity(8,1);
-    l_eye_version_velocity(i) = msgs{i,1}.Velocity(12,1);
-    l_eye_vergence_velocity(i) = msgs{i,1}.Velocity(16,1);
+    neck_pan_velocity(i) = msgs{i,1}.Velocity(8,1);         %Is the sign right?
+    l_eye_version_velocity(i) = -msgs{i,1}.Velocity(12,1);  %Is the sign right?
+    l_eye_vergence_velocity(i) = -msgs{i,1}.Velocity(16,1); %Is the sign right?
 end
+
+%Combined movement - http://wiki.icub.org/wiki/Vergence,_Version_and_Disparity
+
+left_eye = l_eye_version_velocity+l_eye_vergence_velocity/.2;
 
 figure(1);
 hold on;
 
 plot(times, neck_pan_velocity);
-plot(times, l_eye_version_velocity);
-plot(times, l_eye_vergence_velocity);
+plot(times, left_eye);
+%plot(times, l_eye_vergence_velocity);
 
-legend('Neck Pan Velocity', 'Left eye version vel', 'Left eye vergence vel', 'Filtered neck', 'Filtered version', 'Filtered vergence');
+legend('Neck Pan Velocity', 'Left eye velocity');
 
 hold off;
 
