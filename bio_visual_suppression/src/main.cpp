@@ -5,10 +5,11 @@
 #include <ros/ros.h>
 #include <sensor_msgs/image_encodings.h>
 #include <ros/package.h>
-//#include "opencv2/core/eigen.hpp"
-#include "geometry_msgs/PoseStamped.h"
+#include <tf_conversions/tf_eigen.h>
+#include "opencv2/core/eigen.hpp"
+#include "geometry_msgs/PointStamped.h"
 
-
+#include <rosbag/bag.h>
 
 //OpenCV Includes
 #include <opencv2/opencv.hpp>
@@ -58,6 +59,10 @@ private:
     image_transport::Publisher image_pub;
 
 
+    //Bag
+    rosbag::Bag bag;
+
+
     //Our detector
     pedestrianDetector person_detector;
 
@@ -77,10 +82,20 @@ private:
     tf::TransformListener tf_listener;
 
     std::string baseFrameId;
+    std::string cameraFrameId;
+    std::string rosbag_file;
 
+
+    //Camera model
+    boost::shared_ptr<cameraModel> cameramodel;
+
+
+
+    //Detection Filter
+    boost::shared_ptr<DetectionFilter> detectionfilter;
 
     //Callback for processing
- void processingCb(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::JointStateConstPtr & joint_state_msg)
+    void processingCb(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::JointStateConstPtr & joint_state_msg)
     {
         cv_bridge::CvImagePtr cv_ptr;
 
@@ -94,7 +109,9 @@ private:
             return;
         }
 
+
         cv::Mat image(cv_ptr->image);
+
 
         person_detector.runDetector(image);
         Mat imageDisplay = image.clone();
@@ -104,7 +121,6 @@ private:
         vector<cv::Rect_<int> >::iterator it;
 
         vector<Mat> colorFeaturesList;
-
 
         for(it = person_detector.boundingBoxes->begin(); it != person_detector.boundingBoxes->end(); it++){
 
@@ -123,12 +139,84 @@ private:
             colorFeaturesList.push_back(bvtHistogram.clone());
         }
 
-
         //At this point I have the detections and the color features
         //Lets get the tf's
 
+        tf::StampedTransform transform;
+
+        //I'm going to transform in the timestamp of the image. Therefore the final points will be delayed (but I'll add the stamp
+
+        try{
+
+            tf_listener.lookupTransform(cameraFrameId, baseFrameId, image_msg->header.stamp, transform);
+
+        }catch(tf::TransformException ex)
+
+        {
+            ROS_WARN("%s",ex.what());
+            return;
+        }
+
+        //Get a matrix of the TF to make computations
+        Eigen::Affine3d eigen_transform;
+        tf::transformTFToEigen(transform, eigen_transform);
+
+        cv::Mat mapToCameraTransform;
+        cv::eigen2cv(eigen_transform.matrix(), mapToCameraTransform);
 
 
+
+        //Get feet from rects
+        Mat feetImagePoints;
+
+        for(it = person_detector.boundingBoxes->begin(); it != person_detector.boundingBoxes->end(); it++)
+        {
+            Mat feetMat(getFeet(*it));
+            transpose(feetMat, feetMat);
+            feetImagePoints.push_back(feetMat);
+        }
+
+
+
+
+        vector<cv::Point3d> coordsInBaseFrame;
+
+        coordsInBaseFrame = cameramodel->calculatePointsOnWorldFrame(feetImagePoints, mapToCameraTransform, *person_detector.boundingBoxes);
+
+        detectionfilter->filterDetectionsByPersonSize(coordsInBaseFrame, *person_detector.boundingBoxes, mapToCameraTransform);
+
+        vector<cv::Point3d>::iterator itPoint;
+
+        for(itPoint = coordsInBaseFrame.begin(); itPoint != coordsInBaseFrame.end(); itPoint++)
+        {
+
+            ROS_ERROR_STREAM("Detection: " << *itPoint);
+        }
+
+        geometry_msgs::PointStamped point_msg;
+
+        if(coordsInBaseFrame.size() > 0)
+        {
+            cv::Point3d pt = *coordsInBaseFrame.begin();
+
+            point_msg.header.stamp = image_msg->header.stamp;
+            point_msg.point.x = pt.x;
+            point_msg.point.y = pt.y;
+            point_msg.point.z = pt.z;
+
+
+
+            //Publish the detection points on the world in a bag
+            bag.write("detection_points", image_msg->header.stamp, point_msg);
+        }
+
+        //Publish the joint states velocities to a bag
+        sensor_msgs::JointState joint_msg;
+        joint_msg = *joint_state_msg;
+
+
+        bag.write("detection_points", image_msg->header.stamp, point_msg);
+        bag.write("jointStates", image_msg->header.stamp, joint_msg);
 
 
 
@@ -144,16 +232,23 @@ public:
 
     {
 
+        stringstream ss;
+        stringstream ss2;
+
+        ss << ros::package::getPath("bio_visual_suppression");
+        ss2 << ros::package::getPath("bio_visual_suppression");
 
         nPriv.param("masking_threshold", masking_threshold, 0.2);
-        nPriv.param<string>("base_frame_id", baseFrameId, "/odom");
+        nPriv.param<string>("base_frame_id", baseFrameId, "/base_footprint");
+        nPriv.param<string>("camera", cameraFrameId, "l_camera_vision_link");
+        nPriv.param<string>("bag_name", rosbag_file, "Gaze_Bag.bag");
+
+        ss2 << "/bags/" << rosbag_file;
+
+        rosbag_file = ss2.str();
 
         //Advertise
         image_pub = it.advertise("image_out", 1);
-
-        //Subscribe to vizzy's left camera
-        //Change this later
-        //        image_sub = it.subscribe("/vizzy/l_camera/image_rect_color", 1, &PedDetector::imageCb, this);
 
         //Subscribers and sync
         image_sub=boost::shared_ptr<message_filters::Subscriber<sensor_msgs::Image> > (new message_filters::Subscriber<sensor_msgs::Image>(nh, "/vizzy/l_camera/image_rect_color", 10));
@@ -171,8 +266,23 @@ public:
 
         sync->registerCallback(boost::bind(&Suppressor::processingCb, this, _1, _2));
 
+
+
+        ss << "/camera_model/config.yaml";
+
+        cameramodel = boost::shared_ptr<cameraModel> (new cameraModel(ss.str(), "/vizzy/l_camera/camera_info"));
+
+        detectionfilter = boost::shared_ptr<DetectionFilter> (new DetectionFilter(2.51, 0.55, cameramodel.get()));
+
+        bag.open(rosbag_file, rosbag::bagmode::Write);
+
     }
 
+    ~Suppressor()
+    {
+        ROS_ERROR_STREAM("Closing bag");
+        bag.close();
+    }
 
 
 

@@ -1,4 +1,4 @@
-#include "../include/tracker/personMotionModel.hpp"
+#include "../include/personMotionModel.hpp"
 #include <algorithm>
 #include <vector>
 #include <math.h>

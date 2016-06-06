@@ -1,4 +1,4 @@
-#include "../include/tracker/detectionProcess.hpp"
+#include "../include/detectionProcess.hpp"
 #include <algorithm>
 
 using namespace cv;

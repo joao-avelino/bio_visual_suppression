@@ -1,9 +1,9 @@
-#include "../include/tracker/cameraModel.hpp"
+#include "../include/cameraModel.hpp"
 #include "opencv2/highgui/highgui.hpp"
-#include "../include/tracker/detectionProcess.hpp"
+#include "../include/detectionProcess.hpp"
 #include <ros/ros.h>
 #include "sensor_msgs/CameraInfo.h"
-#include "../include/tracker/filtersAndUtilities.hpp"
+#include "../include/filtersAndUtilities.hpp"
 #include <fstream>
 
 

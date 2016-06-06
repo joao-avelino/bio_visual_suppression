@@ -16,12 +16,13 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf_conversions
   message_generation
+  rosbag
 )
 
 find_package(OpenCV REQUIRED)
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+#find_package(Boost REQUIRED COMPONENTS rosbag)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -112,7 +113,7 @@ find_package(OpenCV REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES bio_visual_suppression
-  CATKIN_DEPENDS cv_bridge image_transport roscpp std_msgs message_runtime
+  CATKIN_DEPENDS cv_bridge image_transport roscpp std_msgs message_runtime rosbag
   DEPENDS system_lib
 )
 
