@@ -203,11 +203,6 @@ private:
             point_msg.point.x = pt.x;
             point_msg.point.y = pt.y;
             point_msg.point.z = pt.z;
-
-
-
-            //Publish the detection points on the world in a bag
-            bag.write("detection_points", image_msg->header.stamp, point_msg);
         }
 
         //Publish the joint states velocities to a bag
@@ -215,8 +210,11 @@ private:
         joint_msg = *joint_state_msg;
 
 
-        bag.write("detection_points", image_msg->header.stamp, point_msg);
-        bag.write("jointStates", image_msg->header.stamp, joint_msg);
+        ROS_ERROR_STREAM("detec: " << point_msg);
+        ROS_ERROR_STREAM("joint: " << joint_msg);
+
+        bag.write("detectionPoints", image_msg->header.stamp, point_msg);
+        bag.write("syncJointStates", image_msg->header.stamp, joint_msg);
 
 
 
