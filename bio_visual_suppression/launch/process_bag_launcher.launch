@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!-- ROS head file to run bag and extract data for visual suppression  -->
+<launch>
+  <!-- robot configuration parameters -->
+  <arg name="robot" default="vizzy"/> <!-- full, lower_body, foot -->
+
+  <arg name="map_frame" default="map" />
+  <arg name="tf_prefix" default="" />
+  <arg name="map_topic" default="/map" />
+  <arg name="visualization" default="true" />
+  <arg name="bag_name_out" default="gaze_bag_out.bag"/>
+
+<param name="use_sim_time" value="true" />
+  <!-- Load the URDF into the ROS Parameter Server -->
+  <param name="robot_description"
+		command="$(find xacro)/xacro.py $(find vizzy_description)/robots/vizzy.urdf.xacro use_yarp:=false" />
+
+<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen"/>
+
+
+  <!-- Play the bag file. Leave it in a loop !-->
+
+<node name="republish" type="republish" pkg="image_transport" output="screen" args="compressed in:=/vizzy/l_camera/image_rect_color raw out:=/vizzy/l_camera/image_rect_color_uncompressed" />
+
+<node pkg="rosbag" type="play" name="player" output="screen" args="--clock $(find bio_visual_suppression)/bags/last_rui_fast.bag"/>
+
+
+<!-- Run the suppressor !-->
+<node pkg="bio_visual_suppression" type="suppressor" name="suppressor" output="screen" respawn="true">
+    	<rosparam file="$(find bio_visual_suppression)/config/suppressor_params.yaml" command="load"/>
+	<param name="bag_name" type="str" value="$(arg bag_name_out)"/>
+  </node>
+
+</launch>

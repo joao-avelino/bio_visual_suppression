@@ -17,7 +17,7 @@ cameraModel::cameraModel(string configFile, string cameraStr)
 {
   //Getting camera intrinsics from camera info topic
 
-  ROS_INFO("Getting camera parameters");
+  ROS_ERROR("Getting camera parameters");
 
   sensor_msgs::CameraInfoConstPtr l_camera_info = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(cameraStr, ros::Duration(30));
 
@@ -45,6 +45,9 @@ cameraModel::cameraModel(string configFile, string cameraStr)
   K_.at<double>(1,1) = l_camera_info->K.at(4);
   K_.at<double>(0,2) = l_camera_info->K.at(2);
   K_.at<double>(1,2) = l_camera_info->K.at(5);
+
+  ROS_ERROR("Camera info topic found");
+
   }
 
   invert(K_, invertedK);

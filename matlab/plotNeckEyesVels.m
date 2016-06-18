@@ -9,8 +9,8 @@ bagSelection = select(bagObject, 'Topic', '/joint_states');
 
 
 %%%Filtro
-N = 4;                 % Order of polynomial fit
-F = 41;                % Window length
+N = 2;                 % Order of polynomial fit
+F = 7;                % Window length
 [b,g] = sgolay(N,F);   % Calculate S-G coefficients
 
 HalfWin  = ((F+1)/2) -1;
@@ -69,7 +69,7 @@ left_eye = l_eye_version_velocity+l_eye_vergence_velocity/.2;
 figure(1);
 hold on;
 
-dt = times(500)-times(499);
+dt = mean(diff(times((F+1)/2:lastMsg-(F+1)/2)));
 
 %plot(times((F+1)/2:lastMsg-(F+1)/2), SG0);
 plot(times((F+1)/2:lastMsg-(F+1)/2), SG1/dt);

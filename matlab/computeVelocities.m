@@ -1,4 +1,4 @@
-function [ velocity ] = computeVelocities( jointPosition, N, F, HalfWin, dt)
+function [ velocity ] = computeVelocities( jointPosition, N, F, HalfWin, dt, lastMsg)
 %UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 

@@ -1,0 +1,4 @@
+baseFrameId: /base_footprint
+cameraFrameId: l_camera_vision_link
+jointStateTopic: /joint_states
+cameraTopic: /vizzy/l_camera/image_rect_color_uncompressed
