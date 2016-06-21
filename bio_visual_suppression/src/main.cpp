@@ -205,8 +205,8 @@ private:
         geometry_msgs::PointStamped pontos;
 
         pontos.point.x = feetImagePoints.at<double>(0, 0);
-        pontos.point.y = feetImagePoints.at<double>(1, 0);
-        pontos.point.z = feetImagePoints.at<float>(2, 0);
+        pontos.point.y = feetImagePoints.at<double>(0, 1);
+        //pontos.point.z = feetImagePoints.at<double>(0, 2);
         pontos.header.stamp = image_msg->header.stamp;
 
 
@@ -256,11 +256,21 @@ private:
                     }
                 }
 
+
             }
+
+            /*Trying to compensate for intrinsics*/
+
+            pt.y = pt.y - (0.0065*pontos.point.x-0.9315);
+
+            /************************************/
+
             point_msg.header.stamp = image_msg->header.stamp;
             point_msg.point.x = pt.x;
             point_msg.point.y = pt.y;
             point_msg.point.z = pt.z;
+
+
 
             if(pt.x == 0 && pt.y == 0)
             {
@@ -368,12 +378,12 @@ public:
         image_pub = it.advertise("image_out", 1);
 
         //Subscribers and sync
-        image_sub=boost::shared_ptr<message_filters::Subscriber<sensor_msgs::Image> > (new message_filters::Subscriber<sensor_msgs::Image>(nh, cameraTopic, 100));
-        joint_state_sub=boost::shared_ptr<message_filters::Subscriber<sensor_msgs::JointState> > (new message_filters::Subscriber<sensor_msgs::JointState>(nh, jointTopic, 100));
+        image_sub=boost::shared_ptr<message_filters::Subscriber<sensor_msgs::Image> > (new message_filters::Subscriber<sensor_msgs::Image>(nh, cameraTopic, 1000));
+        joint_state_sub=boost::shared_ptr<message_filters::Subscriber<sensor_msgs::JointState> > (new message_filters::Subscriber<sensor_msgs::JointState>(nh, jointTopic, 1000));
 
 
         //TF's synchronized with the image
-        image_filter = boost::shared_ptr<tf::MessageFilter<sensor_msgs::Image> > (new tf::MessageFilter<sensor_msgs::Image>(*image_sub, tf_listener, baseFrameId, 100));
+        image_filter = boost::shared_ptr<tf::MessageFilter<sensor_msgs::Image> > (new tf::MessageFilter<sensor_msgs::Image>(*image_sub, tf_listener, baseFrameId, 1000));
 
 
         sync=boost::shared_ptr<message_filters::Synchronizer<MySyncPolicy> > (new message_filters::Synchronizer<MySyncPolicy>(MySyncPolicy(100),
@@ -399,7 +409,7 @@ public:
 
 
         nPriv.param<double>("gtX", gtX, 2.40);
-        nPriv.param<double>("gtX", gtY, 0);
+        nPriv.param<double>("gtY", gtY, 0);
 
         /*Marker stuff*/
         visualization_msgs::Marker person_marker;

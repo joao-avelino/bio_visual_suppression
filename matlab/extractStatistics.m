@@ -4,11 +4,11 @@ clear
 
 FONTSIZE_ = 45;
 
-thresholdArray = 0.01:0.1:600*pi()/180;
+thresholdArray = 0:0.1:600*pi()/180;
 bag = rosbag('/home/avelino/catkin_ws/src/bio_visual_suppression/bio_visual_suppression/bags/gaze_bag_out.bag');
 
-GTpersonX = 2.4473; % Define this thing <-------------------
-GTpersonY = 0.103; % Define this thing <-------------------
+GTpersonX = 3.1; % Define this thing <-------------------
+GTpersonY = 0; % Define this thing <-------------------
 
 %Filter stuff %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 N = 2;                 % Order of polynomial fit
@@ -117,6 +117,8 @@ leftEyeVelocity = computeVelocities(jointLeftEye, N, F, HalfWin, dt, lastTimeJoi
 %% Fuse velocities
 % leftEyeVelocity = jointEyeVersionVelocity+jointEyeVergenceVelocity/2;
 overallVelocity = leftEyeVelocity + jointNeckVelocity;
+overallPosition = jointLeftEye+jointNeckPosition;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%55
 figure(1);
@@ -234,7 +236,6 @@ set(gca,'YTickLabel', {'$\omega_{th}$', 300 , 600});
 set(gcf,'color','w');
 
 
-
 %% Finally... compute the statistics
 sz = size(leftEyeVelocity);
 sz = sz(2);
@@ -245,24 +246,29 @@ distanceError = [];
 
 l = 1;
 
-for i=1:numOfThreshs
+for i=1:numOfThreshs-1
     
     thr = thresholdArray(i);
+    thr1 = thresholdArray(i+1);
     clear posXunderVth;
-    clear posYunderVth;    
+    clear posYunderVth;
+    posXunderVth = [];
+    posYunderVth = [];
     b = 1;
     for n=1:sz
-        if (abs(leftEyeVelocity(n)+jointNeckVelocity(n)) < thr)
+        if (abs(leftEyeVelocity(n)+jointNeckVelocity(n)) < thr1 && abs(leftEyeVelocity(n)+jointNeckVelocity(n)) > thr)
             posXunderVth(b) = personX(n);
             posYunderVth(b) = personY(n);
             imageXunderVth(b) = imageX(n);
             imageYunderVth(b) = imageY(n);
             timesAfterSupr(b) = times_aux(n);
             b = b+1;
-        end 
+        end
     end
     
     timesSup{i} = timesAfterSupr;
+    imageYSup{i} = imageYunderVth;
+    imageXSup{i} = imageXunderVth;
     posYsup{i} = posYunderVth;
     
     testSz = size(posXunderVth);
@@ -317,6 +323,24 @@ for i=1:numOfThreshs
 end
 
 
+%% Plot the number of samples for each bin
+figure(50)
+hold on
+bins = thresholdArray(1:end-1)+diff(thresholdArray)/2;
+bins = bins*180/pi();
+nsamples = cellfun('length', posYsup);
+bar(bins, nsamples);
+set(gca,'XTick', thresholdArray*180/pi());
+hold off
+
+%% Plot person position and joint position to estimate the delay
+
+% figure(20)
+% hold on
+% plot(timesJoints(1:end-50), (-overallPosition(1:end-50)-mean(-overallPosition(1:end-50)))*0.8);
+% plot(timesSup{105}, medfilt1(imageXSup{105}-mean(imageXSup{105}), 1)/(mean(imageXSup{105})));
+% hold off
+
 %% And plot the statistics
 
 figure(4)
@@ -326,8 +350,12 @@ set(gca,'fontsize',FONTSIZE_);
 
 
 hold on
-plot(thresholdArrayOut*180/pi(), abs(meanArrayX-meanArrayX(1)), 'LineWidth',5);
-plot(thresholdArrayOut*180/pi(), abs(meanArrayY-meanArrayY(1)), 'LineWidth',5);
+
+errorbar(bins(1:size(meanArrayY, 2)), abs(meanArrayY), abs(varianceArrayY), 'rx');
+
+
+plot(thresholdArrayOut*180/pi(), abs(meanArrayX), 'LineWidth',5);
+plot(thresholdArrayOut*180/pi(), abs(meanArrayY), 'LineWidth',5);
 
 
 %title('Position error mean for X and Y coordinates');
@@ -340,6 +368,8 @@ hold off
 set(gcf,'color','w');
 
 figure(5)
+
+bar(bins(1:size(meanArrayY, 2)), abs(varianceArrayY));
 
 c = axes;
 set(c,'TickLabelInterpreter', 'latex');
@@ -357,7 +387,7 @@ set(gcf,'color','w');
 
 %% Plot person position along time for various thresholds
 
-figure(6)
+figure(5)
 
 d = axes;
 set(d,'TickLabelInterpreter', 'latex');
@@ -366,7 +396,7 @@ hold on
 
 gtYplot = ones(1, 50)*0.103;
 
-plot(timesSup{5}, posYsup{5}, 'LineWidth', 5);
+plot(timesSup{1}, posYsup{1}, 'LineWidth', 3);
 plot(timesSup{105}, posYsup{105}, 'LineStyle', ':', 'LineWidth', 5);
 plot(gtYplot,'LineStyle', '--', 'LineWidth', 5);
 
@@ -375,7 +405,7 @@ xlabel('Time (s)');
 ylabel({'Y person position (m)'}, 'Interpreter', 'latex');
 legend('\omega_{th} = 23.5 (º/s)', '\omega_{th} = \infty', 'Person GT');
 hold off
-xlim([18.53 22]);
+xlim([12.09 17]);
 set(gca,'XTick', [18 19 20 21 22] );
 
 set(gcf,'color','w');

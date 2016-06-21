@@ -22,7 +22,7 @@
 
 <node name="republish" type="republish" pkg="image_transport" output="screen" args="compressed in:=/vizzy/l_camera/image_rect_color raw out:=/vizzy/l_camera/image_rect_color_uncompressed" />
 
-<node pkg="rosbag" type="play" name="player" output="screen" args="--clock $(find bio_visual_suppression)/bags/last_rui_fast.bag"/>
+<node pkg="rosbag" type="play" name="player" output="screen" args="--clock --rate 0.7 $(find bio_visual_suppression)/bags/onlyEyes.bag"/>
 
 
 <!-- Run the suppressor !-->
