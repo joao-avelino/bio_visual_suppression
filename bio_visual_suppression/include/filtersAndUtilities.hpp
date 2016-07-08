@@ -2,8 +2,8 @@
 #define FILTERSANDUTILITIES_H
 #include <opencv2/opencv.hpp>
 //Custom messages
-#include <pedestrian_detector/DetectionList.h>
-#include <pedestrian_detector/BoundingBox.h>
+//#include <pedestrian_detector/DetectionList.h>
+//#include <pedestrian_detector/BoundingBox.h>
 #include "../include/cameraModel.hpp"
 
 using namespace cv;

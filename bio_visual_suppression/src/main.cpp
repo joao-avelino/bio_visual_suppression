@@ -106,6 +106,8 @@ private:
     interactive_markers::InteractiveMarkerServer marker_server;
     visualization_msgs::InteractiveMarker int_marker;
 
+    //Suppression
+    double velocity_threshold;
 
     void dummy(
             const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
@@ -120,6 +122,24 @@ private:
     void processingCb(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::JointStateConstPtr & joint_state_msg)
     {
         cv_bridge::CvImagePtr cv_ptr;
+
+        //Before any processing check the velocities. If the sum is higher than the threshold just return
+
+        double neck_velocity = joint_state_msg->velocity.at(8);
+        double leftEye_velocity = joint_state_msg->velocity.at(11);
+        double rightEye_velocity = joint_state_msg->velocity.at(12);
+
+        double sumVelocities = abs(neck_velocity+leftEye_velocity);
+
+
+
+        if(sumVelocities >= velocity_threshold)
+        {
+            ROS_ERROR_STREAM("Suppressing! vel_neck = " << neck_velocity << " | vel_leftEye = " << leftEye_velocity << " | vel_rightEye= " << rightEye_velocity);
+            return;
+        }else{
+            ROS_ERROR_STREAM("NOT Suppressing! vel_neck = " << neck_velocity << " | vel_leftEye = " << leftEye_velocity << " | vel_rightEye= " << rightEye_velocity);
+        }
 
         try
         {
@@ -369,6 +389,7 @@ public:
         nPriv.param<string>("bag_name", rosbag_file, "Gaze_Bag.bag");
         nPriv.param<string>("jointStateTopic", jointTopic, "/joint_states");
         nPriv.param<string>("cameraTopic", cameraTopic, "/vizzy/l_camera/image_rect_color_uncompressed");
+        nPriv.param<double>("velocity_threshold", velocity_threshold, 90.0);
 
         ss2 << "/bags/" << rosbag_file;
 

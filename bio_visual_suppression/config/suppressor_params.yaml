@@ -4,3 +4,4 @@ jointStateTopic: /joint_states
 cameraTopic: /vizzy/l_camera/image_rect_color_uncompressed
 gtX: 3.1
 gtY: 0
+velocity_threshold: 0.8
